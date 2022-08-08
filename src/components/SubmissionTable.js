@@ -1,30 +1,36 @@
-import React, { useEffect, useReducer, useState } from "react";
+import React, { useEffect, useReducer, useRef } from "react";
+
+import Spinner from "./Spinner";
+
+import useSWR from "swr";
 
 function SubmissionTable({ course }) {
-    const [students, setStudents] = useState([]);
-    const [slugs, setSlugs] = useState([]);
     const { sort, dispatchSort, sortedBy } = useSort();
 
-    useEffect(() => {
-        getSubmissions(course).then(([students, slugs]) => {
-            setStudents(students);
-            setSlugs(slugs);
-        });
-    }, [course]);
+    let [data, isLoading] = useSubmissions(course);
 
-    if (students.length === 0) {
-        return <div></div>;
+    if (!data && isLoading) {
+        return <Spinner />;
     }
+
+    const [students, slugs] = data;
 
     const rows = sort(students).map((student) => (
         <StudentRow key={student} student={student} slugs={slugs} />
     ));
 
     return (
-        <div style={getRowStyles(students, slugs)}>
-            <Header slugs={slugs} onClick={dispatchSort} sortedBy={sortedBy} />
-            {rows}
-        </div>
+        <>
+            {isLoading && <Spinner />}
+            <div style={getRowStyles(students, slugs)}>
+                <Header
+                    slugs={slugs}
+                    onClick={dispatchSort}
+                    sortedBy={sortedBy}
+                />
+                {rows}
+            </div>
+        </>
     );
 }
 
@@ -182,6 +188,28 @@ function useSort() {
     };
 
     return { sort, dispatchSort: dispatch, sortedBy: state };
+}
+
+function useSubmissions(course) {
+    const fetcher = (...args) => getSubmissions(...args);
+    const prevStateRef = useRef();
+
+    const { data, error } = useSWR(`/api/get_submission/${course}`, fetcher);
+
+    useEffect(() => {
+        if (data) {
+            prevStateRef.current = data;
+        }
+    });
+
+    const isLoading = !data;
+
+    let resultData = data;
+    if (isLoading && prevStateRef.current) {
+        resultData = prevStateRef.current;
+    }
+
+    return [resultData, isLoading];
 }
 
 function getSubmissions(course) {
