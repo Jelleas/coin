@@ -1,34 +1,20 @@
-import React, { useReducer } from "react";
+import React, { useEffect, useReducer, useState } from "react";
 
-function useSort() {
-    const reducer = (state, type) => {
-        if (state.type === type) {
-            return { type: type, asc: !state.asc };
-        } else {
-            return { type: type, asc: true };
-        }
-    };
-    const [state, dispatch] = useReducer(reducer, {
-        type: "student",
-        asc: true,
-    });
-
-    const sort = (students) => {
-        if (state.type === "student") {
-            if (state.asc) {
-                return [...students].sort();
-            } else {
-                return [...students].sort().reverse();
-            }
-        }
-        return students;
-    };
-
-    return { sort, dispatchSort: dispatch, sortedBy: state };
-}
-
-function Table({ students, slugs }) {
+function SubmissionTable({ course }) {
+    const [students, setStudents] = useState([]);
+    const [slugs, setSlugs] = useState([]);
     const { sort, dispatchSort, sortedBy } = useSort();
+
+    useEffect(() => {
+        getSubmissions(course).then(([students, slugs]) => {
+            setStudents(students);
+            setSlugs(slugs);
+        });
+    }, [course]);
+
+    if (students.length === 0) {
+        return <div></div>;
+    }
 
     const rows = sort(students).map((student) => (
         <StudentRow key={student} student={student} slugs={slugs} />
@@ -50,8 +36,10 @@ function getRowStyles(students, slugs) {
     );
     return {
         display: "grid",
-        gridTemplateColumns:
-            `${firstColWidth}ch ` + slugs.map((s) => "auto").join(" "),
+        gridTemplateColumns: [
+            `${firstColWidth}ch`,
+            ...slugs.map((s) => "auto"),
+        ].join(" "),
         textAlign: "left",
         overflow: "scroll",
         width: "100%",
@@ -115,6 +103,7 @@ function Submission({ student, slug }) {
             style={{
                 marginBottom: "1ch",
                 marginRight: "1ch",
+                cursor: "pointer",
             }}
         >
             <span
@@ -168,4 +157,62 @@ function UnsortedCarets() {
     );
 }
 
-export default Table;
+function useSort() {
+    const reducer = (state, type) => {
+        if (state.type === type) {
+            return { type: type, asc: !state.asc };
+        } else {
+            return { type: type, asc: true };
+        }
+    };
+    const [state, dispatch] = useReducer(reducer, {
+        type: "student",
+        asc: true,
+    });
+
+    const sort = (students) => {
+        if (state.type === "student") {
+            if (state.asc) {
+                return [...students].sort();
+            } else {
+                return [...students].sort().reverse();
+            }
+        }
+        return students;
+    };
+
+    return { sort, dispatchSort: dispatch, sortedBy: state };
+}
+
+function getSubmissions(course) {
+    const promise = new Promise((resolve) => {
+        const students = ["id1", "id2", "id3"];
+
+        const slugs = [
+            "2021/mario",
+            "2022/caesar",
+            "2022/fifteen",
+            "2022/speller",
+            "2022/python",
+            "2022/adventure",
+            // "2022/foo",
+            // "2022/bar",
+            // "2022/baz",
+            // "2022/foo2",
+            // "2022/bar2",
+            // "2022/baz2",
+            // "2022/foo3",
+            // "2022/bar3",
+            // "2022/baz3",
+            // "2022/foo4",
+            // "2022/bar4",
+            // "2022/baz4",
+        ];
+
+        setTimeout(() => resolve([students, slugs]), 1000);
+        // resolve([students, slugs]);
+    });
+    return promise;
+}
+
+export default SubmissionTable;
