@@ -2,12 +2,10 @@ import React, { useReducer } from "react";
 
 function useSort() {
     const reducer = (state, type) => {
-        if (type === "student") {
-            if (state.type === "student") {
-                return { type: "student", asc: !state.asc };
-            } else {
-                return { type: "student", asc: true };
-            }
+        if (state.type === type) {
+            return { type: type, asc: !state.asc };
+        } else {
+            return { type: type, asc: true };
         }
     };
     const [state, dispatch] = useReducer(reducer, {
@@ -66,6 +64,7 @@ function Header({ slugs, onClick, sortedBy }) {
         paddingBottom: "3px",
         marginBottom: "1ch",
         borderBottom: "solid black 1px",
+        cursor: "pointer",
     };
 
     const studentHeader = (
@@ -74,13 +73,23 @@ function Header({ slugs, onClick, sortedBy }) {
             key="student"
             style={{ ...style, textAlign: "center" }}
         >
-            student{sortedBy.type === "student" && <Caret asc={sortedBy.asc} />}
+            student
+            {sortedBy.type === "student" ? (
+                <Caret asc={sortedBy.asc} />
+            ) : (
+                <UnsortedCarets />
+            )}
         </div>
     );
 
     const slugHeaders = [...slugs].map((slug) => (
         <div onClick={() => onClick(slug)} style={style} key={slug}>
             {slug}
+            {sortedBy.type === slug ? (
+                <Caret asc={sortedBy.asc} />
+            ) : (
+                <UnsortedCarets />
+            )}
         </div>
     ));
 
@@ -122,7 +131,7 @@ function Submission({ student, slug }) {
     );
 }
 
-function Caret({ asc }) {
+function Caret({ asc, filled }) {
     let style = {
         content: "",
         color: "black",
@@ -140,7 +149,23 @@ function Caret({ asc }) {
         style = { ...style, borderBottom: "4px dashed", borderTop: 0 };
     }
 
+    if (!filled) {
+        style = { ...style, color: "#cccccc" };
+    }
+
     return <span style={style}></span>;
+}
+Caret.defaultProps = {
+    filled: true,
+};
+
+function UnsortedCarets() {
+    return (
+        <>
+            <Caret asc={true} filled={false} />
+            <Caret asc={false} filled={false} />
+        </>
+    );
 }
 
 export default Table;
