@@ -4,6 +4,8 @@ import SubmissionTable from "./SubmissionTable";
 import Spinner from "./Spinner";
 import useSWR from "swr";
 
+const IN_DEVELOPMENT = process.env.NODE_ENV === "development";
+
 function useCourses() {
     const fetcher = (...args) => getCourses(...args);
     const prevStateRef = useRef();
@@ -27,22 +29,24 @@ function useCourses() {
 }
 
 function getCourses() {
-    const promise = new Promise((resolve) => {
-        const courses = [
-            "prog1_21_herfst",
-            "prog1_21_lente",
-            "prog2_21_herfst",
-            "prog2_21_lente",
-            "prog1_22_herfst",
-            "prog1_22_lente",
-            "prog2_22_herfst",
-            "prog2_22_lente",
-        ];
+    if (IN_DEVELOPMENT) {
+        const promise = new Promise((resolve) => {
+            const courses = [
+                "prog1_21_herfst",
+                "prog1_21_lente",
+                "prog2_21_herfst",
+                "prog2_21_lente",
+                "prog1_22_herfst",
+                "prog1_22_lente",
+                "prog2_22_herfst",
+                "prog2_22_lente",
+            ];
 
-        setTimeout(() => resolve(courses), 1000);
-        // resolve(courses);
-    });
-    return promise;
+            setTimeout(() => resolve(courses), 1000);
+            // resolve(courses);
+        });
+        return promise;
+    }
 }
 
 function Title() {

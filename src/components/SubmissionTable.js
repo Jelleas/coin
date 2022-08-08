@@ -4,6 +4,8 @@ import Spinner from "./Spinner";
 
 import useSWR from "swr";
 
+const IN_DEVELOPMENT = process.env.NODE_ENV === "development";
+
 function SubmissionTable({ course }) {
     const { sort, dispatchSort, sortedBy } = useSort();
 
@@ -213,34 +215,49 @@ function useSubmissions(course) {
 }
 
 function getSubmissions(course) {
-    const promise = new Promise((resolve) => {
-        const students = ["id1", "id2", "id3"];
+    if (IN_DEVELOPMENT) {
+        const slowPromise = new Promise((resolve) => {
+            setTimeout(() => resolve(), 1000);
+        });
 
-        const slugs = [
-            "2021/mario",
-            "2022/caesar",
-            "2022/fifteen",
-            "2022/speller",
-            "2022/python",
-            "2022/adventure",
-            // "2022/foo",
-            // "2022/bar",
-            // "2022/baz",
-            // "2022/foo2",
-            // "2022/bar2",
-            // "2022/baz2",
-            // "2022/foo3",
-            // "2022/bar3",
-            // "2022/baz3",
-            // "2022/foo4",
-            // "2022/bar4",
-            // "2022/baz4",
-        ];
+        const loadData = import("../mock_data/course.json").then((course) => {
+            const students = getStudents(course);
+            const slugs = course.slugs.map((slug) => slug.name);
 
-        setTimeout(() => resolve([students, slugs]), 1000);
-        // resolve([students, slugs]);
-    });
-    return promise;
+            // const slugs = [
+            //     "2021/mario",
+            //     "2022/caesar",
+            //     "2022/fifteen",
+            //     "2022/speller",
+            //     "2022/python",
+            //     "2022/adventure",
+            //     // "2022/foo",
+            //     // "2022/bar",
+            //     // "2022/baz",
+            //     // "2022/foo2",
+            //     // "2022/bar2",
+            //     // "2022/baz2",
+            //     // "2022/foo3",
+            //     // "2022/bar3",
+            //     // "2022/baz3",
+            //     // "2022/foo4",
+            //     // "2022/bar4",
+            //     // "2022/baz4",
+            // ];
+
+            return [students, slugs];
+        });
+
+        return Promise.all([loadData, slowPromise]).then(([data]) => data);
+    }
+}
+
+function getStudents(course) {
+    let students = course.slugs
+        .map((slug) => slug.submitters.map((submitter) => submitter.name))
+        .flat();
+    students = [...new Set(students)];
+    return students;
 }
 
 export default SubmissionTable;
