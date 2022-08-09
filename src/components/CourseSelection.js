@@ -50,7 +50,7 @@ function CourseSelectionButton({ course, isSelected, onClick }) {
     }
 
     return (
-        <div style={style} onClick={onClick}>
+        <div style={{ ...style, fontFamily: "monospace" }} onClick={onClick}>
             {course}
         </div>
     );

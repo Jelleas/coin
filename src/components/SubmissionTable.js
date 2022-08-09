@@ -6,6 +6,9 @@ import useSWR from "swr";
 
 const IN_DEVELOPMENT = process.env.NODE_ENV === "development";
 
+// number of characters visible
+const SUBMISSION_WIDTH = 15;
+
 function SubmissionTable({ course }) {
     const [{ students, slugs, submissions }, isLoading] =
         useSubmissions(course);
@@ -45,6 +48,7 @@ function Header({ slugs, onClick, sortedBy }) {
     const style = {
         paddingTop: "3px",
         paddingBottom: "3px",
+        paddingRight: "1ch",
         marginBottom: "1ch",
         borderBottom: "1px solid black",
         cursor: "pointer",
@@ -69,16 +73,29 @@ function Header({ slugs, onClick, sortedBy }) {
         <div
             onClick={() => onClick("student")}
             key="student"
-            style={{ ...style, textAlign: "center" }}
+            style={{
+                ...style,
+                textAlign: "center",
+            }}
         >
-            student
+            <pre style={{ display: "inline-block", margin: 0 }}>student</pre>
             {getCaret(sortedBy.type === "student", sortedBy.asc)}
         </div>
     );
 
     const slugHeaders = [...slugs].map((slug) => (
-        <div onClick={() => onClick(slug)} style={style} key={slug}>
-            {slug}
+        <div onClick={() => onClick(slug)} style={{ ...style }} key={slug}>
+            <pre
+                style={{
+                    maxWidth: `${SUBMISSION_WIDTH - 1}ch`,
+                    margin: 0,
+                    display: "inline-block",
+                    wordBreak: "break-all",
+                    whiteSpace: "pre-line",
+                }}
+            >
+                {slug}
+            </pre>
             {getCaret(sortedBy.type === slug, sortedBy.asc)}
         </div>
     ));
@@ -93,7 +110,16 @@ function StudentRow({ student, submissions }) {
 
     return (
         <>
-            <div style={{ textAlign: "center" }}>{student}</div>
+            <pre
+                style={{
+                    textAlign: "center",
+                    display: "inline-block",
+                    margin: 0,
+                    padding: "4px",
+                }}
+            >
+                {student}
+            </pre>
             {renderedSubmissions}
         </>
     );
@@ -101,13 +127,14 @@ function StudentRow({ student, submissions }) {
 
 function Submission({ submission }) {
     const formatScore = (submission) => {
-        const width = 7;
+        const width = SUBMISSION_WIDTH;
         const score = submission.rank[0]?.score;
         if (!score) {
             return " ".repeat(width - 1) + "-";
         }
         const formattedScore = (Math.round(score * 10) / 10).toFixed(1);
-        const spaces = " ".repeat(Math.max(7 - formattedScore.length, 0));
+        const spaces = " ".repeat(Math.max(width - formattedScore.length, 0));
+        console.log(width);
         return spaces + formattedScore;
     };
 
@@ -126,6 +153,7 @@ function Submission({ submission }) {
                     margin: "0",
                     cursor: "pointer",
                     display: "inline-block",
+                    width: `${SUBMISSION_WIDTH}ch`,
                 }}
             >
                 {formatScore(submission)}
@@ -337,12 +365,15 @@ function getRowStyles(students, slugs) {
         20,
         Math.max(maxStudentLength, "student".length + 2)
     );
+
+    const x = `${firstColWidth}ch auto auto 1fr`;
+    // [
+    //     `${firstColWidth}ch`,
+    //     ...slugs.map((s) => "auto"),
+    // ].join(" "),
     return {
         display: "grid",
-        gridTemplateColumns: [
-            `${firstColWidth}ch`,
-            ...slugs.map((s) => "auto"),
-        ].join(" "),
+        gridTemplateColumns: x,
         textAlign: "left",
         overflow: "scroll",
         width: "100%",

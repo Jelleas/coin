@@ -69,7 +69,74 @@
             ]
         },
         {
-            "name": "testSlug2",
+            "name": "really/long/slug/foo/bar/bazwithoutslashesattheend",
+            "submitters": [
+                {
+                    "name": "student4959",
+                    "submission": {
+                        "version": 1,
+                        "rank": []
+                    }
+                },
+                {
+                    "name": "student8329",
+                    "submission": {
+                        "version": 1,
+                        "rank": [
+                            {
+                                "sub_a": {
+                                    "submitter": "student8329",
+                                    "slug": "testSlug",
+                                    "version": 1
+                                },
+                                "sub_b": {
+                                    "submitter": "student4959",
+                                    "slug": "testCourse/testSlug",
+                                    "version": 0
+                                },
+                                "score": 32.169796430638975
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "student1502",
+                    "submission": {
+                        "version": 1,
+                        "rank": [
+                            {
+                                "sub_a": {
+                                    "submitter": "student1502",
+                                    "slug": "testSlug",
+                                    "version": 1
+                                },
+                                "sub_b": {
+                                    "submitter": "student4959",
+                                    "slug": "testCourse/testSlug",
+                                    "version": 0
+                                },
+                                "score": 200.09861228866811
+                            },
+                            {
+                                "sub_a": {
+                                    "submitter": "student1502",
+                                    "slug": "testSlug",
+                                    "version": 1
+                                },
+                                "sub_b": {
+                                    "submitter": "student8329",
+                                    "slug": "testCourse/testSlug",
+                                    "version": 0
+                                },
+                                "score": 2.09861228866811
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "short/slug",
             "submitters": [
                 {
                     "name": "student4959",
