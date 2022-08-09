@@ -22,7 +22,7 @@ function SubmissionTable({ course }) {
         <StudentRow
             key={student}
             student={student}
-            submissions={studentToSubmissions[student]}
+            submissions={studentToSubmissions.get(student)}
         />
     ));
 
@@ -50,6 +50,21 @@ function Header({ slugs, onClick, sortedBy }) {
         cursor: "pointer",
     };
 
+    const getCaret = (sorted, asc) => {
+        if (sorted) {
+            return (
+                <>
+                    <Caret asc={asc} />
+                    <span style={{ visibility: "hidden" }}>
+                        <Caret asc={true} />
+                    </span>
+                </>
+            );
+        } else {
+            return <UnsortedCarets />;
+        }
+    };
+
     const studentHeader = (
         <div
             onClick={() => onClick("student")}
@@ -57,27 +72,14 @@ function Header({ slugs, onClick, sortedBy }) {
             style={{ ...style, textAlign: "center" }}
         >
             student
-            {sortedBy.type === "student" ? (
-                <>
-                    <Caret asc={sortedBy.asc} />
-                    <span style={{ visibility: "hidden" }}>
-                        <Caret asc={true} />
-                    </span>
-                </>
-            ) : (
-                <UnsortedCarets />
-            )}
+            {getCaret(sortedBy.type === "student", sortedBy.asc)}
         </div>
     );
 
     const slugHeaders = [...slugs].map((slug) => (
         <div onClick={() => onClick(slug)} style={style} key={slug}>
             {slug}
-            {sortedBy.type === slug ? (
-                <Caret asc={sortedBy.asc} />
-            ) : (
-                <UnsortedCarets />
-            )}
+            {getCaret(sortedBy.type === slug, sortedBy.asc)}
         </div>
     ));
 
@@ -197,14 +199,18 @@ function useSort(submissions) {
 
         // Get each student's submission to the slug
         const studentToSubmissions = getStudentsToSubmissions(submissions);
+        const studentToSub = new Map();
         studentToSubmissions.forEach((subs, student) => {
-            studentToSubmissions[student] = subs.filter((s) => s.slug === slug);
+            studentToSub.set(
+                student,
+                subs.find((s) => s.slug === slug)
+            );
         });
 
         // Sort the students by their highest ranking score
         const sortedStudents = [...students].sort((student_a, student_b) => {
-            const sub_a = studentToSubmissions[student_a][0];
-            const sub_b = studentToSubmissions[student_b][0];
+            const sub_a = studentToSub.get(student_a);
+            const sub_b = studentToSub.get(student_b);
 
             const score_a = sub_a?.rank[0]?.score;
             const score_b = sub_b?.rank[0]?.score;
@@ -347,9 +353,9 @@ function getStudentsToSubmissions(submissions) {
     const studentToSubmissions = new Map();
     submissions.forEach((sub) => {
         if (studentToSubmissions.has(sub.student)) {
-            studentToSubmissions[sub.student].push(sub);
+            studentToSubmissions.get(sub.student).push(sub);
         } else {
-            studentToSubmissions[sub.student] = [sub];
+            studentToSubmissions.set(sub.student, [sub]);
         }
     });
     return studentToSubmissions;
