@@ -1,8 +1,9 @@
-import React, { useEffect, useReducer, useRef } from "react";
+import React, { useState, useEffect, useReducer, useRef } from "react";
 
 import Spinner from "./Spinner";
 
 import useSWR from "swr";
+import ReactTooltip from "react-tooltip";
 
 const IN_DEVELOPMENT = process.env.NODE_ENV === "development";
 
@@ -15,6 +16,12 @@ function SubmissionTable({ course }) {
 
     const { sort, dispatchSort, sortedBy } = useSort(submissions);
 
+    useEffect(() => {
+        ReactTooltip.rebuild();
+    }, isLoading);
+
+    const { tooltip, show, hide } = useTooltip("submission-table");
+
     if (slugs.length === 0 && isLoading) {
         return <Spinner />;
     }
@@ -26,12 +33,15 @@ function SubmissionTable({ course }) {
             key={student}
             student={student}
             submissions={studentToSubmissions.get(student)}
+            showTooltip={show}
+            hideTooltip={hide}
         />
     ));
 
     return (
         <>
             {isLoading && <Spinner />}
+            {tooltip}
             <div style={getRowStyles(students, slugs)}>
                 <Header
                     slugs={slugs}
@@ -51,7 +61,6 @@ function Header({ slugs, onClick, sortedBy }) {
         paddingRight: "1ch",
         marginBottom: "1ch",
         borderBottom: "1px solid black",
-        cursor: "pointer",
     };
 
     const getCaret = (sorted, asc) => {
@@ -71,41 +80,56 @@ function Header({ slugs, onClick, sortedBy }) {
 
     const studentHeader = (
         <div
-            onClick={() => onClick("student")}
             key="student"
             style={{
                 ...style,
                 textAlign: "center",
             }}
         >
-            <pre style={{ display: "inline-block", margin: 0 }}>student</pre>
-            {getCaret(sortedBy.type === "student", sortedBy.asc)}
+            <pre
+                onClick={() => onClick("student")}
+                style={{
+                    display: "inline-block",
+                    margin: 0,
+                    cursor: "pointer",
+                }}
+            >
+                student
+                {getCaret(sortedBy.type === "student", sortedBy.asc)}
+            </pre>
         </div>
     );
 
     const slugHeaders = [...slugs].map((slug) => (
-        <div onClick={() => onClick(slug)} style={{ ...style }} key={slug}>
+        <div style={{ ...style }} key={slug}>
             <pre
+                onClick={() => onClick(slug)}
                 style={{
                     maxWidth: `${SUBMISSION_WIDTH - 1}ch`,
                     margin: 0,
                     display: "inline-block",
                     wordBreak: "break-all",
                     whiteSpace: "pre-line",
+                    cursor: "pointer",
                 }}
             >
                 {slug}
+                {getCaret(sortedBy.type === slug, sortedBy.asc)}
             </pre>
-            {getCaret(sortedBy.type === slug, sortedBy.asc)}
         </div>
     ));
 
     return [studentHeader, ...slugHeaders];
 }
 
-function StudentRow({ student, submissions }) {
+function StudentRow({ student, submissions, showTooltip, hideTooltip }) {
     const renderedSubmissions = submissions.map((sub) => (
-        <Submission key={sub.slug} submission={sub} />
+        <Submission
+            key={sub.slug}
+            submission={sub}
+            showTooltip={showTooltip}
+            hideTooltip={hideTooltip}
+        />
     ));
 
     return (
@@ -125,7 +149,7 @@ function StudentRow({ student, submissions }) {
     );
 }
 
-function Submission({ submission }) {
+function Submission({ submission, showTooltip, hideTooltip }) {
     const formatScore = (submission) => {
         const width = SUBMISSION_WIDTH;
         const score = submission.rank[0]?.score;
@@ -134,7 +158,6 @@ function Submission({ submission }) {
         }
         const formattedScore = (Math.round(score * 10) / 10).toFixed(1);
         const spaces = " ".repeat(Math.max(width - formattedScore.length, 0));
-        console.log(width);
         return spaces + formattedScore;
     };
 
@@ -155,6 +178,11 @@ function Submission({ submission }) {
                     display: "inline-block",
                     width: `${SUBMISSION_WIDTH}ch`,
                 }}
+                data-tip="foo"
+                data-for="submission-table"
+                data-place="right"
+                onMouseEnter={showTooltip}
+                onMouseLeave={hideTooltip}
             >
                 {formatScore(submission)}
             </pre>
@@ -349,6 +377,38 @@ function getSubmissions(course) {
 
         return Promise.all([loadData, slowPromise]).then(([data]) => data);
     }
+}
+
+function useTooltip(id) {
+    const tooltipRef = useRef();
+
+    const tooltip = (
+        <span ref={tooltipRef}>
+            <ReactTooltip
+                id={id}
+                effect="solid"
+                type="info"
+                backgroundColor="#2196f3"
+            />
+        </span>
+    );
+
+    const timeoutRef = useRef();
+
+    const show = () => {
+        clearTimeout(timeoutRef.current);
+        tooltipRef.current.children[0].style.visibility = "visible";
+    };
+
+    // tooltip does not hide in StrictMode
+    // https://github.com/wwayne/react-tooltip/issues/777
+    const hide = () => {
+        timeoutRef.current = setTimeout(() => {
+            tooltipRef.current.children[0].style.visibility = "hidden";
+        }, 100);
+    };
+
+    return { tooltip, show, hide };
 }
 
 function getStudents(course) {
