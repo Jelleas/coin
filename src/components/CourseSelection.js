@@ -1,11 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 
 function CourseSelection({ courses, onSelect }) {
+    const [selectedCourse, setSelectedCourse] = useState(null);
+
     const buttons = courses.map((course) => (
         <CourseSelectionButton
             key={course}
             course={course}
-            onClick={() => onSelect(course)}
+            isSelected={selectedCourse === course}
+            onClick={() => {
+                setSelectedCourse(course);
+                onSelect(course);
+            }}
         />
     ));
 
@@ -26,14 +32,22 @@ function CourseSelection({ courses, onSelect }) {
     );
 }
 
-function CourseSelectionButton({ course, onClick }) {
-    const style = {
+function CourseSelectionButton({ course, isSelected, onClick }) {
+    let style = {
         border: "1px solid black",
         borderRadius: "5px",
         marginRight: "1ch",
         padding: "3px",
         textAlign: "center",
     };
+
+    if (isSelected) {
+        style = {
+            ...style,
+            border: "2px solid #2196f3",
+            padding: "2px",
+        };
+    }
 
     return (
         <div style={style} onClick={onClick}>

@@ -7,18 +7,23 @@ import useSWR from "swr";
 const IN_DEVELOPMENT = process.env.NODE_ENV === "development";
 
 function SubmissionTable({ course }) {
-    const { sort, dispatchSort, sortedBy } = useSort();
+    const [{ students, slugs, submissions }, isLoading] =
+        useSubmissions(course);
 
-    let [data, isLoading] = useSubmissions(course);
+    const { sort, dispatchSort, sortedBy } = useSort(submissions);
 
-    if (!data && isLoading) {
+    if (slugs.length === 0 && isLoading) {
         return <Spinner />;
     }
 
-    const [students, slugs] = data;
+    const studentToSubmissions = getStudentsToSubmissions(submissions);
 
     const rows = sort(students).map((student) => (
-        <StudentRow key={student} student={student} slugs={slugs} />
+        <StudentRow
+            key={student}
+            student={student}
+            submissions={studentToSubmissions[student]}
+        />
     ));
 
     return (
@@ -36,30 +41,12 @@ function SubmissionTable({ course }) {
     );
 }
 
-function getRowStyles(students, slugs) {
-    const maxStudentLength = Math.max(...students.map((s) => s.length));
-    const firstColWidth = Math.min(
-        20,
-        Math.max(maxStudentLength, "student".length + 2)
-    );
-    return {
-        display: "grid",
-        gridTemplateColumns: [
-            `${firstColWidth}ch`,
-            ...slugs.map((s) => "auto"),
-        ].join(" "),
-        textAlign: "left",
-        overflow: "scroll",
-        width: "100%",
-    };
-}
-
 function Header({ slugs, onClick, sortedBy }) {
     const style = {
         paddingTop: "3px",
         paddingBottom: "3px",
         marginBottom: "1ch",
-        borderBottom: "solid black 1px",
+        borderBottom: "1px solid black",
         cursor: "pointer",
     };
 
@@ -71,7 +58,12 @@ function Header({ slugs, onClick, sortedBy }) {
         >
             student
             {sortedBy.type === "student" ? (
-                <Caret asc={sortedBy.asc} />
+                <>
+                    <Caret asc={sortedBy.asc} />
+                    <span style={{ visibility: "hidden" }}>
+                        <Caret asc={true} />
+                    </span>
+                </>
             ) : (
                 <UnsortedCarets />
             )}
@@ -92,38 +84,50 @@ function Header({ slugs, onClick, sortedBy }) {
     return [studentHeader, ...slugHeaders];
 }
 
-function StudentRow({ student, slugs }) {
-    const submissions = slugs.map((slug) => (
-        <Submission key={slug} slug={slug} student={student} />
+function StudentRow({ student, submissions }) {
+    const renderedSubmissions = submissions.map((sub) => (
+        <Submission key={sub.slug} submission={sub} />
     ));
 
     return (
         <>
             <div style={{ textAlign: "center" }}>{student}</div>
-            {submissions}
+            {renderedSubmissions}
         </>
     );
 }
 
-function Submission({ student, slug }) {
+function Submission({ submission }) {
+    const formatScore = (submission) => {
+        const width = 7;
+        const score = submission.rank[0]?.score;
+        if (!score) {
+            return " ".repeat(width - 1) + "-";
+        }
+        const formattedScore = (Math.round(score * 10) / 10).toFixed(1);
+        const spaces = " ".repeat(Math.max(7 - formattedScore.length, 0));
+        return spaces + formattedScore;
+    };
+
     return (
         <div
             style={{
                 marginBottom: "1ch",
                 marginRight: "1ch",
-                cursor: "pointer",
             }}
         >
-            <span
+            <pre
                 style={{
                     border: "solid black 1px",
                     borderRadius: "3px",
                     padding: "3px",
+                    margin: "0",
+                    cursor: "pointer",
                     display: "inline-block",
                 }}
             >
-                {student} submitted {slug}
-            </span>
+                {formatScore(submission)}
+            </pre>
         </div>
     );
 }
@@ -165,7 +169,7 @@ function UnsortedCarets() {
     );
 }
 
-function useSort() {
+function useSort(submissions) {
     const reducer = (state, type) => {
         if (state.type === type) {
             return { type: type, asc: !state.asc };
@@ -179,14 +183,46 @@ function useSort() {
     });
 
     const sort = (students) => {
+        // Sort by student
         if (state.type === "student") {
             if (state.asc) {
-                return [...students].sort();
-            } else {
                 return [...students].sort().reverse();
+            } else {
+                return [...students].sort();
             }
         }
-        return students;
+
+        // Sort by slug
+        const slug = state.type;
+
+        // Get each student's submission to the slug
+        const studentToSubmissions = getStudentsToSubmissions(submissions);
+        studentToSubmissions.forEach((subs, student) => {
+            studentToSubmissions[student] = subs.filter((s) => s.slug === slug);
+        });
+
+        // Sort the students by their highest ranking score
+        const sortedStudents = [...students].sort((student_a, student_b) => {
+            const sub_a = studentToSubmissions[student_a][0];
+            const sub_b = studentToSubmissions[student_b][0];
+
+            const score_a = sub_a?.rank[0]?.score;
+            const score_b = sub_b?.rank[0]?.score;
+
+            if (score_a === score_b) {
+                return 0;
+            }
+            if (score_a === undefined) {
+                return -1;
+            }
+            if (score_b === undefined) {
+                return 1;
+            }
+
+            return score_a > score_b ? 1 : -1;
+        });
+
+        return state.asc ? sortedStudents.reverse() : sortedStudents;
     };
 
     return { sort, dispatchSort: dispatch, sortedBy: state };
@@ -207,11 +243,21 @@ function useSubmissions(course) {
     const isLoading = !data;
 
     let resultData = data;
-    if (isLoading && prevStateRef.current) {
-        resultData = prevStateRef.current;
+    if (isLoading) {
+        // If there is old (stale) data, return that
+        if (prevStateRef.current) {
+            resultData = prevStateRef.current;
+        } // Else return an empty result object
+        else {
+            resultData = {
+                submissions: [],
+                students: [],
+                slugs: [],
+            };
+        }
     }
 
-    return [resultData, isLoading];
+    return [resultData, isLoading, error];
 }
 
 function getSubmissions(course) {
@@ -223,7 +269,26 @@ function getSubmissions(course) {
         const loadData = import("../mock_data/course.json").then((course) => {
             const students = getStudents(course);
             const slugs = course.slugs.map((slug) => slug.name);
-
+            const submissions = course.slugs
+                .map((slug) => {
+                    return slug.submitters.map((submitter) => {
+                        return {
+                            student: submitter.name,
+                            version: submitter.submission.version,
+                            slug: slug.name,
+                            course: course.name,
+                            rank: submitter.submission.rank.map((rank) => {
+                                return {
+                                    student: rank.sub_b.submitter,
+                                    slug: rank.sub_b.slug,
+                                    version: rank.sub_b.version,
+                                    score: rank.score,
+                                };
+                            }),
+                        };
+                    });
+                })
+                .flat();
             // const slugs = [
             //     "2021/mario",
             //     "2022/caesar",
@@ -245,7 +310,7 @@ function getSubmissions(course) {
             //     // "2022/baz4",
             // ];
 
-            return [students, slugs];
+            return { students, slugs, submissions };
         });
 
         return Promise.all([loadData, slowPromise]).then(([data]) => data);
@@ -258,6 +323,36 @@ function getStudents(course) {
         .flat();
     students = [...new Set(students)];
     return students;
+}
+
+function getRowStyles(students, slugs) {
+    const maxStudentLength = Math.max(...students.map((s) => s.length));
+    const firstColWidth = Math.min(
+        20,
+        Math.max(maxStudentLength, "student".length + 2)
+    );
+    return {
+        display: "grid",
+        gridTemplateColumns: [
+            `${firstColWidth}ch`,
+            ...slugs.map((s) => "auto"),
+        ].join(" "),
+        textAlign: "left",
+        overflow: "scroll",
+        width: "100%",
+    };
+}
+
+function getStudentsToSubmissions(submissions) {
+    const studentToSubmissions = new Map();
+    submissions.forEach((sub) => {
+        if (studentToSubmissions.has(sub.student)) {
+            studentToSubmissions[sub.student].push(sub);
+        } else {
+            studentToSubmissions[sub.student] = [sub];
+        }
+    });
+    return studentToSubmissions;
 }
 
 export default SubmissionTable;

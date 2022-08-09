@@ -25,7 +25,7 @@ function useCourses() {
         resultData = prevStateRef.current;
     }
 
-    return [resultData, isLoading];
+    return [resultData, isLoading, error];
 }
 
 function getCourses() {
