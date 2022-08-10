@@ -51,7 +51,7 @@ function Title() {
         textAlign: "center",
         color: "#2196f3",
     };
-    return <h1 style={style}>compare50</h1>;
+    return <h1 style={style}>compare50 dashboard</h1>;
 }
 
 function CourseView() {

@@ -1,26 +1,28 @@
-import React, { useEffect, useReducer, useRef } from "react";
+import React, { useContext, useEffect, useReducer, useRef } from "react";
 
 import Spinner from "./Spinner";
+import useTooltip from "../hooks/useTooltip";
 
 import useSWR from "swr";
-import ReactTooltip from "react-tooltip";
 
 const IN_DEVELOPMENT = process.env.NODE_ENV === "development";
 
 // number of characters visible
 const SUBMISSION_WIDTH = 15;
 
+const TooltipContext = React.createContext();
+
 function SubmissionTable({ course }) {
     const [{ students, slugs, submissions }, isLoading] =
         useSubmissions(course);
 
     const { sort, dispatchSort, sortedBy } = useSort(submissions);
+    const containerRef = useRef(null);
 
-    useEffect(() => {
-        ReactTooltip.rebuild();
-    }, [isLoading]);
-
-    const { tooltip, show, hide } = useTooltip("submission-table");
+    const [tooltip, showTooltip, hideTooltip] = useTooltip(
+        containerRef,
+        "right"
+    );
 
     if (slugs.length === 0 && isLoading) {
         return <Spinner />;
@@ -28,21 +30,21 @@ function SubmissionTable({ course }) {
 
     const studentToSubmissions = getStudentsToSubmissions(submissions);
 
-    const rows = sort(students).map((student) => (
-        <StudentRow
-            key={student}
-            student={student}
-            submissions={studentToSubmissions.get(student)}
-            showTooltip={show}
-            hideTooltip={hide}
-        />
-    ));
+    const rows = sort(students).map((student) => {
+        return (
+            <StudentRow
+                key={student}
+                student={student}
+                submissions={studentToSubmissions.get(student)}
+            />
+        );
+    });
 
     return (
-        <>
+        <TooltipContext.Provider value={[showTooltip, hideTooltip]}>
             {isLoading && <Spinner />}
-            {tooltip}
-            <div style={getRowStyles(students, slugs)}>
+            <div ref={containerRef} style={getRowStyles(students, slugs)}>
+                {tooltip}
                 <Header
                     slugs={slugs}
                     onClick={dispatchSort}
@@ -50,7 +52,7 @@ function SubmissionTable({ course }) {
                 />
                 {rows}
             </div>
-        </>
+        </TooltipContext.Provider>
     );
 }
 
@@ -122,14 +124,9 @@ function Header({ slugs, onClick, sortedBy }) {
     return [studentHeader, ...slugHeaders];
 }
 
-function StudentRow({ student, submissions, showTooltip, hideTooltip }) {
+function StudentRow({ student, submissions }) {
     const renderedSubmissions = submissions.map((sub) => (
-        <Submission
-            key={sub.slug}
-            submission={sub}
-            showTooltip={showTooltip}
-            hideTooltip={hideTooltip}
-        />
+        <Submission key={sub.slug} submission={sub} />
     ));
 
     return (
@@ -149,7 +146,7 @@ function StudentRow({ student, submissions, showTooltip, hideTooltip }) {
     );
 }
 
-function Submission({ submission, showTooltip, hideTooltip }) {
+function Submission({ submission }) {
     const formatScore = (submission) => {
         const width = SUBMISSION_WIDTH;
         const score = submission.rank[0]?.score;
@@ -161,6 +158,10 @@ function Submission({ submission, showTooltip, hideTooltip }) {
         return spaces + formattedScore;
     };
 
+    const ref = useRef();
+
+    const [showTooltip, hideTooltip] = useContext(TooltipContext);
+
     return (
         <div
             style={{
@@ -169,6 +170,7 @@ function Submission({ submission, showTooltip, hideTooltip }) {
             }}
         >
             <pre
+                ref={ref}
                 style={{
                     border: "solid black 1px",
                     borderRadius: "3px",
@@ -181,8 +183,17 @@ function Submission({ submission, showTooltip, hideTooltip }) {
                 data-tip="foo"
                 data-for="submission-table"
                 data-place="right"
-                onMouseEnter={showTooltip}
-                onMouseLeave={hideTooltip}
+                onMouseEnter={() =>
+                    showTooltip(
+                        ref,
+                        submission.rank.map((r) => (
+                            <div>
+                                {r.student} {r.score}
+                            </div>
+                        ))
+                    )
+                }
+                onMouseLeave={() => hideTooltip()}
                 onClick={() => {
                     console.log("comparing:", submission.payload);
                 }}
@@ -383,41 +394,6 @@ function getSubmissions(course) {
 
         return Promise.all([loadData, slowPromise]).then(([data]) => data);
     }
-}
-
-function useTooltip(id) {
-    const tooltipRef = useRef();
-
-    const tooltip = (
-        <span ref={tooltipRef}>
-            <ReactTooltip
-                id={id}
-                effect="solid"
-                type="info"
-                backgroundColor="#2196f3"
-            />
-        </span>
-    );
-
-    const timeoutRef = useRef();
-
-    const show = () => {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => {
-            tooltipRef.current.children[0].style.visibility = "visible";
-        }, 10);
-    };
-
-    // tooltip does not hide in StrictMode
-    // https://github.com/wwayne/react-tooltip/issues/777
-    const hide = () => {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => {
-            tooltipRef.current.children[0].style.visibility = "hidden";
-        }, 100);
-    };
-
-    return { tooltip, show, hide };
 }
 
 function getStudents(course) {
