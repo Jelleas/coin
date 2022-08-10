@@ -30,22 +30,19 @@ function useCourses() {
 
 function getCourses() {
     if (IN_DEVELOPMENT) {
-        const promise = new Promise((resolve) => {
-            const courses = [
-                "prog1_21_herfst",
-                "prog1_21_lente",
-                "prog2_21_herfst",
-                "prog2_21_lente",
-                "prog1_22_herfst",
-                "prog1_22_lente",
-                "prog2_22_herfst",
-                "prog2_22_lente",
-            ];
-
-            setTimeout(() => resolve(courses), 1000);
-            // resolve(courses);
+        const slowPromise = new Promise((resolve) => {
+            setTimeout(() => resolve(), 1000);
         });
-        return promise;
+
+        const coursesPromise = import("../mock_data/courses.json").then(
+            (courses) => {
+                return Array.from(courses);
+            }
+        );
+
+        return Promise.all([coursesPromise, slowPromise]).then(([courses]) => {
+            return courses;
+        });
     }
 }
 

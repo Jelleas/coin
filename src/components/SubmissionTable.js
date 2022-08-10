@@ -183,6 +183,9 @@ function Submission({ submission, showTooltip, hideTooltip }) {
                 data-place="right"
                 onMouseEnter={showTooltip}
                 onMouseLeave={hideTooltip}
+                onClick={() => {
+                    console.log("comparing:", submission.payload);
+                }}
             >
                 {formatScore(submission)}
             </pre>
@@ -347,6 +350,7 @@ function getSubmissions(course) {
                                     score: rank.score,
                                 };
                             }),
+                            payload: submitter.submission.rank,
                         };
                     });
                 })
