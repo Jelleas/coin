@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useReducer, useRef } from "react";
+import React, { useEffect, useReducer, useRef } from "react";
 
 import Spinner from "./Spinner";
 
@@ -18,7 +18,7 @@ function SubmissionTable({ course }) {
 
     useEffect(() => {
         ReactTooltip.rebuild();
-    }, isLoading);
+    }, [isLoading]);
 
     const { tooltip, show, hide } = useTooltip("submission-table");
 
@@ -397,12 +397,15 @@ function useTooltip(id) {
 
     const show = () => {
         clearTimeout(timeoutRef.current);
-        tooltipRef.current.children[0].style.visibility = "visible";
+        timeoutRef.current = setTimeout(() => {
+            tooltipRef.current.children[0].style.visibility = "visible";
+        }, 10);
     };
 
     // tooltip does not hide in StrictMode
     // https://github.com/wwayne/react-tooltip/issues/777
     const hide = () => {
+        clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => {
             tooltipRef.current.children[0].style.visibility = "hidden";
         }, 100);
