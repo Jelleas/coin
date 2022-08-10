@@ -294,7 +294,7 @@ function useSort(submissions) {
 }
 
 function useSubmissions(course) {
-    const fetcher = (...args) => getSubmissions(...args);
+    const fetcher = (...args) => getSubmissions(course, ...args);
     const prevStateRef = useRef();
 
     const { data, error } = useSWR(`/api/get_submission/${course}`, fetcher);
@@ -331,53 +331,55 @@ function getSubmissions(course) {
             setTimeout(() => resolve(), 1000);
         });
 
-        const loadData = import("../mock_data/course.json").then((course) => {
-            const students = getStudents(course);
-            const slugs = course.slugs.map((slug) => slug.name);
-            const submissions = course.slugs
-                .map((slug) => {
-                    return slug.submitters.map((submitter) => {
-                        return {
-                            student: submitter.name,
-                            version: submitter.submission.version,
-                            slug: slug.name,
-                            course: course.name,
-                            rank: submitter.submission.rank.map((rank) => {
-                                return {
-                                    student: rank.sub_b.submitter,
-                                    slug: rank.sub_b.slug,
-                                    version: rank.sub_b.version,
-                                    score: rank.score,
-                                };
-                            }),
-                            payload: submitter.submission.rank,
-                        };
-                    });
-                })
-                .flat();
-            // const slugs = [
-            //     "2021/mario",
-            //     "2022/caesar",
-            //     "2022/fifteen",
-            //     "2022/speller",
-            //     "2022/python",
-            //     "2022/adventure",
-            //     // "2022/foo",
-            //     // "2022/bar",
-            //     // "2022/baz",
-            //     // "2022/foo2",
-            //     // "2022/bar2",
-            //     // "2022/baz2",
-            //     // "2022/foo3",
-            //     // "2022/bar3",
-            //     // "2022/baz3",
-            //     // "2022/foo4",
-            //     // "2022/bar4",
-            //     // "2022/baz4",
-            // ];
+        const loadData = import(`../mock_data/${course}.json`).then(
+            (course) => {
+                const students = getStudents(course);
+                const slugs = course.slugs.map((slug) => slug.name);
+                const submissions = course.slugs
+                    .map((slug) => {
+                        return slug.submitters.map((submitter) => {
+                            return {
+                                student: submitter.name,
+                                version: submitter.submission.version,
+                                slug: slug.name,
+                                course: course.name,
+                                rank: submitter.submission.rank.map((rank) => {
+                                    return {
+                                        student: rank.sub_b.submitter,
+                                        slug: rank.sub_b.slug,
+                                        version: rank.sub_b.version,
+                                        score: rank.score,
+                                    };
+                                }),
+                                payload: submitter.submission.rank,
+                            };
+                        });
+                    })
+                    .flat();
+                // const slugs = [
+                //     "2021/mario",
+                //     "2022/caesar",
+                //     "2022/fifteen",
+                //     "2022/speller",
+                //     "2022/python",
+                //     "2022/adventure",
+                //     // "2022/foo",
+                //     // "2022/bar",
+                //     // "2022/baz",
+                //     // "2022/foo2",
+                //     // "2022/bar2",
+                //     // "2022/baz2",
+                //     // "2022/foo3",
+                //     // "2022/bar3",
+                //     // "2022/baz3",
+                //     // "2022/foo4",
+                //     // "2022/bar4",
+                //     // "2022/baz4",
+                // ];
 
-            return { students, slugs, submissions };
-        });
+                return { students, slugs, submissions };
+            }
+        );
 
         return Promise.all([loadData, slowPromise]).then(([data]) => data);
     }
@@ -433,14 +435,15 @@ function getRowStyles(students, slugs) {
         Math.max(maxStudentLength, "student".length + 2)
     );
 
-    const x = `${firstColWidth}ch auto auto 1fr`;
-    // [
-    //     `${firstColWidth}ch`,
-    //     ...slugs.map((s) => "auto"),
-    // ].join(" "),
+    const studentColWidth = `${firstColWidth}ch`;
+    const slugColWidths = slugs
+        .map((s, i) => (i !== slugs.length - 1 ? "auto" : "1fr"))
+        .join(" ");
+    const colWidths = `${studentColWidth} ${slugColWidths}`;
+
     return {
         display: "grid",
-        gridTemplateColumns: x,
+        gridTemplateColumns: colWidths,
         textAlign: "left",
         overflow: "scroll",
         width: "100%",
