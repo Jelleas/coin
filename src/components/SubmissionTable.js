@@ -28,7 +28,24 @@ function SubmissionTable({ course }) {
         return <Spinner />;
     }
 
+    // console.log(
+    //     submissions
+    //         .filter((s) => s.rank[0] !== undefined)
+    //         .map((s) => parseFloat(s.rank[0].score))
+    //         .sort((a, b) => (a === b ? 0 : a < b ? 1 : -1))
+    // );
+
+    const getWeights = (studentSubmissions, slugToMaxScore) => {
+        return studentSubmissions.map((studentSub) => {
+            const score =
+                studentSub.rank[0] === undefined ? 0 : studentSub.rank[0].score;
+            return score / slugToMaxScore.get(studentSub.slug);
+        });
+    };
+
     const studentToSubmissions = getStudentsToSubmissions(submissions);
+
+    const slugToMaxScore = getSlugToMaxScore(submissions);
 
     const rows = sort(students).map((student) => {
         return (
@@ -36,6 +53,10 @@ function SubmissionTable({ course }) {
                 key={student}
                 student={student}
                 submissions={studentToSubmissions.get(student)}
+                weights={getWeights(
+                    studentToSubmissions.get(student),
+                    slugToMaxScore
+                )}
             />
         );
     });
@@ -124,9 +145,9 @@ function Header({ slugs, onClick, sortedBy }) {
     return [studentHeader, ...slugHeaders];
 }
 
-function StudentRow({ student, submissions }) {
-    const renderedSubmissions = submissions.map((sub) => (
-        <Submission key={sub.slug} submission={sub} />
+function StudentRow({ student, submissions, weights }) {
+    const renderedSubmissions = submissions.map((sub, i) => (
+        <Submission key={sub.slug} submission={sub} weight={weights[i]} />
     ));
 
     return (
@@ -146,7 +167,7 @@ function StudentRow({ student, submissions }) {
     );
 }
 
-function Submission({ submission }) {
+function Submission({ submission, weight }) {
     const formatScore = (submission) => {
         const width = SUBMISSION_WIDTH;
         const score = submission.rank[0]?.score;
@@ -162,6 +183,8 @@ function Submission({ submission }) {
 
     const [showTooltip, hideTooltip] = useContext(TooltipContext);
 
+    const fillWidth = weight * SUBMISSION_WIDTH;
+
     return (
         <div
             style={{
@@ -172,6 +195,7 @@ function Submission({ submission }) {
             <pre
                 ref={ref}
                 style={{
+                    boxShadow: `inset calc(${fillWidth}ch + 6px) 0px 0px 0px #ccc`,
                     border: "solid black 1px",
                     borderRadius: "3px",
                     padding: "3px",
@@ -427,15 +451,61 @@ function getRowStyles(students, slugs) {
 }
 
 function getStudentsToSubmissions(submissions) {
-    const studentToSubmissions = new Map();
-    submissions.forEach((sub) => {
-        if (studentToSubmissions.has(sub.student)) {
-            studentToSubmissions.get(sub.student).push(sub);
+    return _getFieldToObjects(submissions, "student");
+}
+
+function getSlugToSubmissions(submissions) {
+    return _getFieldToObjects(submissions, "slug");
+}
+
+function getSlugToMaxScore(submissions) {
+    function getMaxScore(scores) {
+        const sum = (arr) => arr.reduce((a, b) => a + b, 0);
+
+        const mean = (arr) => sum(arr) / arr.length;
+
+        const max = (arr) => arr.reduce((a, b) => (a > b ? a : b), 0);
+
+        const std = (arr) => {
+            const mu = mean(arr);
+            const diffArr = arr.map((a) => (a - mu) ** 2);
+            return Math.sqrt(sum(diffArr) / (arr.length - 1));
+        };
+
+        // Filter out any scores > mean + 3 * std
+        const filterVal = mean(scores) + 3 * std(scores);
+        const newScores = scores.filter((val) => val <= filterVal);
+
+        return max(newScores);
+    }
+
+    const slugToSubmissions = getSlugToSubmissions(submissions);
+    const slugToMaxScore = new Map();
+
+    slugToSubmissions.forEach((submissions, slug) => {
+        const maxScore = getMaxScore(
+            submissions
+                .filter((sub) => sub.rank[0] !== undefined)
+                .map((sub) => sub.rank[0].score)
+        );
+
+        slugToMaxScore.set(slug, maxScore);
+    });
+
+    return slugToMaxScore;
+}
+
+function _getFieldToObjects(objects, field) {
+    const fieldToObjects = new Map();
+    objects.forEach((obj) => {
+        const key = obj[field];
+        if (fieldToObjects.has(key)) {
+            fieldToObjects.get(key).push(obj);
         } else {
-            studentToSubmissions.set(sub.student, [sub]);
+            fieldToObjects.set(key, [obj]);
         }
     });
-    return studentToSubmissions;
+    return fieldToObjects;
 }
 
 export default SubmissionTable;
